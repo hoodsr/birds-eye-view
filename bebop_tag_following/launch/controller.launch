@@ -1,0 +1,3 @@
+<launch>
+	<node name="bebop_follow" pkg="bebop_tag_following" type="bebop_tag_following" output="screen" />
+</launch>

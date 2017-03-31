@@ -1,0 +1,17 @@
+<launch>
+    <include file="$(find turtlebot_bringup)/launch/minimal.launch" />
+
+ <!--       <node name="gmapping" pkg="gmapping" type="slam_gmapping" args="scan:=base_scan" >
+        <param name="linearUpdate" value="0.1" />
+        <param name="angularUpdate" value="0.1" />
+    </node>-->
+    <node name="hokuyo" pkg="urg_node" type="urg_node" >
+        <param name="frame_id" value="base_link" />
+        <param name="ip_address" value="192.168.1.20" />
+        <remap from="scan" to="base_scan" />
+        <param name="angle_min" value="-1.57"/>
+        <param name="angle_max" value="1.57"/>
+    </node>
+    <node name="random_walk" pkg="random_walk" type="random_walk" output="screen"/>
+
+</launch>

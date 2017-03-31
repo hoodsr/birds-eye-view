@@ -1,0 +1,3 @@
+<launch>
+    <node name="cl" pkg="comparative_localization" type="comparative_localization" />
+</launch>
