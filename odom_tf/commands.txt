@@ -1,0 +1,10 @@
+simple commands to get the ardrone running and working
+always start roscore in a terminal
+
+in another terminal start ardrone from your catkin workspace 
+> rosrun ardrone_autonomy ardrone_driver
+
+this command needs to be run every time to calibrate the drone before takeoff
+> rosservice call /ardrone/flattrim
+
+

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.4.6)
-project(comparative_localization)
+project(odom_tf)
 
 # Set the build type.  Options are:
 #  Coverage       : w/ debug symbols, w/o optimization, w/ code-coverage
@@ -50,6 +50,6 @@ include_directories(${ardrone_autonomy_INCLUDE_DIRS})
 #uncomment if you have defined services
 #rosbuild_gensrv()
 
-add_executable(comparative_localization src/cl.cpp)
-target_link_libraries(comparative_localization ${catkin_LIBRARIES})
-target_link_libraries(comparative_localization ${OpenCV_LIBS} ${BULLET_LIBRARIES})
+add_executable(odom_tf src/transformBroadcast.cpp)
+target_link_libraries(odom_tf ${catkin_LIBRARIES})
+target_link_libraries(odom_tf ${OpenCV_LIBS} ${BULLET_LIBRARIES})

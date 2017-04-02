@@ -1,0 +1,3 @@
+<launch>
+    <node name="cl" pkg="cooperative_localization" type="cooperative_localization" />
+</launch>

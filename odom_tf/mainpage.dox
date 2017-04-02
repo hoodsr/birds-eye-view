@@ -2,7 +2,7 @@
 \mainpage
 \htmlinclude manifest.html
 
-\b comparative_localization
+\b odom_tf
 
 <!-- 
 Provide an overview of your package.
