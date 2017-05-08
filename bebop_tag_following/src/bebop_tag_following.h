@@ -15,8 +15,10 @@
 #include "std_msgs/UInt8.h"
 #include "std_msgs/Empty.h"
 #include "nav_msgs/Odometry.h"
+#include "nav_msgs/Path.h"
 #include "ar_track_alvar_msgs/AlvarMarkers.h"
 #include "geometry_msgs/Point.h"
+#include "geometry_msgs/Pose.h"
 
 #include "State.h"
 
@@ -41,6 +43,8 @@ class bebopTagFollowing {
     void positionCallback(const ar_track_alvar_msgs::AlvarMarkers::ConstPtr& msg);
     void cameraCallback(const std_msgs::Bool::ConstPtr& isBottomCam);
     void turtlebotCallback(const nav_msgs::Odometry::ConstPtr& msg); 
+    void orbSlamCallback(const nav_msgs::Path::ConstPtr& msg);
+    void clCallback(const nav_msgs::Path::ConstPtr& msg);
 
     // Misc. functions
     void shutDown();
@@ -48,7 +52,6 @@ class bebopTagFollowing {
     void hover();
           
   private:
-//    static const double HEIGHT_OVER_TAG = 0.7;
     static const double HEIGHT_OVER_TAG = 0.65;
     // Publishers
     ros::Publisher drone_comms;
@@ -59,7 +62,8 @@ class bebopTagFollowing {
 
     // Subscribers
     ros::Subscriber tagPose;
-    ros::Subscriber turtlebotPose;
+    ros::Subscriber orbSlamSub;
+    ros::Subscriber clSub;
    
     bool printedWarn;
     bool tagDetected;
@@ -70,5 +74,8 @@ class bebopTagFollowing {
     double timeDelta;
    
     State state; // Pose of the tag from ar_track_alvar
-    State turtleState; // Pose of turtlebot from GVG
+    State uavOffset; // Pose of turtlebot from GVG
+
+    geometry_msgs::Pose lastOrbPose;
+    geometry_msgs::Pose lastUGVPose;
 };

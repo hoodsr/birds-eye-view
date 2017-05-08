@@ -12,7 +12,6 @@ using namespace std;
 
 bebopTagFollowing::bebopTagFollowing(ros::NodeHandle& nh) {
   tagDetected = false;
-
   //publishers & services
   drone_comms = nh.advertise<std_msgs::UInt8>("/drone_comms", 1);
   cmdVel = nh.advertise<geometry_msgs::Twist>("/bebop/cmd_vel", 1);
@@ -22,7 +21,8 @@ bebopTagFollowing::bebopTagFollowing(ros::NodeHandle& nh) {
 
   //subscribers
   tagPose = nh.subscribe("/ar_pose_marker", 5, &bebopTagFollowing::positionCallback, this);
-  //turtlebotPose = nh.subscribe("/odom", 100, &bebopTagFollowing::turtlebotCallback, this);
+  orbSlamSub = nh.subscribe("/birdseye/orbslam_path", 1, &bebopTagFollowing::orbSlamCallback, this);
+  clSub = nh.subscribe("/birdseye/cl_ugv_path", 1, &bebopTagFollowing::clCallback, this);
  
   usleep(1000*1000); //wait 1 second to ensure commands are published 
   std_srvs::Empty srv;
@@ -74,13 +74,33 @@ void bebopTagFollowing::shutDown() {
 */
 void bebopTagFollowing::hover() {
   geometry_msgs::Twist cmdT;
-  cmdT.angular.z = 0;
   cmdT.linear.z = 0;
   cmdT.linear.x = 0;
   cmdT.linear.y = 0;
-  cmdT.angular.x = cmdT.angular.y = 0;
+  cmdT.angular.x = cmdT.angular.y = cmdT.angular.z = 0;
   cmdVel.publish(cmdT);
 }
+
+/******************************************************************************
+* Function: orbSlamCallback
+* Input: ORB-SLAM path
+*
+* Saves the last pose of the UAV computed using ORB-SLAM
+*/
+void bebopTagFollowing::orbSlamCallback(const nav_msgs::Path::ConstPtr& msg) {
+  lastOrbPose = msg->poses[msg->poses.size()-1].pose;
+}
+
+/******************************************************************************
+* Function: clCallback
+* Input: cooperative localization path
+*
+* Saves the last pose of the UGV computed using cooperative localization
+*/
+void bebopTagFollowing::clCallback(const nav_msgs::Path::ConstPtr& msg) {
+  lastUGVPose = msg->poses[msg->poses.size()-1].pose;
+}
+
 /**************************************************************************************
 * Function: positionCallback
 * Input: ar_track_alvar msg
@@ -150,7 +170,8 @@ void bebopTagFollowing::positionCallback(const ar_track_alvar_msgs::AlvarMarkers
   }
   
   else { // There are no tags detected
-    if(currentTime-lastSeen>1.5 && !printedWarn) {
+    if(currentTime-lastSeen>2) {
+      if(!printedWarn) {
         tagDetected = false;
         printedWarn = true;
         turtleInfo.data = LOST_TAG;
@@ -158,20 +179,24 @@ void bebopTagFollowing::positionCallback(const ar_track_alvar_msgs::AlvarMarkers
         usleep(100);
 
         hover();
+      }
+      if(!tagDetected) {
         std::cout << "{WARN}: Tag lost by ar_track_alvar" << std::endl;
+        uavOffset.x = lastUGVPose.position.x - lastOrbPose.position.x;
+        uavOffset.y = lastUGVPose.position.y - lastOrbPose.position.y;
+        uavOffset.z = lastUGVPose.position.z - lastOrbPose.position.z + HEIGHT_OVER_TAG;
+         ROS_INFO("UAV Offset: x=%1.2f  y=%1.2f  z=%1.2f", 
+              uavOffset.x, uavOffset.y, uavOffset.z);
+        geometry_msgs::Twist cmdOrb;
+        // cmdOrb.angular.z = -state.yaw*0.4*M_PI/180;
+        cmdOrb.linear.z = uavOffset.z*0.4;
+        cmdOrb.linear.x = uavOffset.x*0.07;
+        cmdOrb.linear.y = uavOffset.y*0.07;
+        cmdOrb.angular.x = cmdOrb.angular.y  = cmdOrb.angular.z = 0;
+        cmdVel.publish(cmdOrb);
+      }
     }
   }
-}
-
-/******************************************************************************
-* Function: turtlebotCallback
-* Input: Predicted pose of the TurtleBot from the GVG algorithm
-* TODO: Use the TurtleBot's pose when the drone loses sight of the tag
-* 
-* Inform the drone of the TurtleBot's location
-*/
-void bebopTagFollowing::turtlebotCallback(const nav_msgs::Odometry::ConstPtr& msg) {
-
 }
 
 /******************************************************************************

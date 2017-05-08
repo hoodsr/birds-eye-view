@@ -36,29 +36,41 @@ using namespace std;
 class cl {
   public:
   cl(ros::NodeHandle& nh) { 
+    scaleX = 1;
+    seen = false;
+    scaleY = 7.632;
+    scaleZ = 2.8;
+    first = true;
+    test_flag = true;
     orbSLAMSub = nh.subscribe("/ORB_SLAM/odom", 10000, &cl::orbSLAMCallback, this);
     tagDataSub = nh.subscribe("/ar_pose_marker", 100000, &cl::tagCallback, this);
-    turtlePathPub = nh.advertise<nav_msgs::Path>("/birdseye/cl_turtle_path", 1000);
-    dronePathPub = nh.advertise<nav_msgs::Path>("/birdseye/cl_drone_path", 1000);
-    orbSLAMPathPub = nh.advertise<nav_msgs::Path>("/birdseye/orb_slam_path", 1000);
-  
+    bebopOdomSub = nh.subscribe("/bebop/odom", 1, &cl::bebopCallback, this);
+    turtlePathPub = nh.advertise<nav_msgs::Path>("/birdseye/cl_ugv_path", 1000);
+    dronePathPub = nh.advertise<nav_msgs::Path>("/birdseye/cl_uav_path", 1000);
+    orbSLAMPathPub = nh.advertise<nav_msgs::Path>("/birdseye/orbslam_path", 1000);
     //tfServer = new tf::TransformBroadcaster();  
     //tfListener = new tf::TransformListener();
     dronePath.header.frame_id = "map";
     turtlePath.header.frame_id = "map";
+    orbSLAMPath.header.frame_id = "map";
   }
   ~cl(void) {
    // if(tfServer)
      // delete tfServer; 
   }
 
+  void bebopCallback(const nav_msgs::Odometry::ConstPtr& odom) {
+    /*lastBebopOdom.header = odom->header;
+    lastBebopOdom.pose = odom->pose;
+    lastBebopOdom.twist = odom->twist;*/
+  }
 
 
   /********************************************************************************
   * function should transfrom data to turtlebots frame of reference
   * then using the odom data from the turtlebot, calculate the pose of the drone
   */
-  void tagCallback(const ar_track_alvar_msgs::AlvarMarkers::ConstPtr& msg) {  
+  void tagCallback(const ar_track_alvar_msgs::AlvarMarkers::ConstPtr& msg) { 
     listener.waitForTransform("map", "base_link", 
             ros::Time(0), ros::Duration(7.0));
     try { 
@@ -77,6 +89,7 @@ class cl {
     turtlePose.pose.orientation.x = tfTransform.getRotation().x();
     turtlePose.pose.orientation.y = tfTransform.getRotation().y();
     turtlePose.pose.orientation.z = tfTransform.getRotation().z();
+
     //turtlePlan.push_back(turtlePose);
     turtlePath.poses.push_back(turtlePose);
 
@@ -93,6 +106,8 @@ class cl {
         dronePath.header.stamp = dronePath.poses[0].header.stamp;
       }
       dronePathPub.publish(dronePath);
+      seen = true; 
+
     }
   }
 
@@ -102,7 +117,7 @@ class cl {
 
     dronePose.pose.position.x += tagPose.pose.position.x;
     dronePose.pose.position.y += tagPose.pose.position.y;
-    dronePose.pose.position.z += tagPose.pose.position.z+1;
+    dronePose.pose.position.z += tagPose.pose.position.z+.45;
 
     //might need -90*M_PI/180
     dronePose.pose.orientation.w += tagPose.pose.orientation.w;
@@ -110,34 +125,94 @@ class cl {
     dronePose.pose.orientation.y += tagPose.pose.orientation.y;
     dronePose.pose.orientation.z += tagPose.pose.orientation.z;
 
+    nav_msgs::Odometry odom_data;
+
+    odom_data.pose.pose.position.x = dronePose.pose.position.x;
+    odom_data.pose.pose.position.y = dronePose.pose.position.y;
+    odom_data.pose.pose.position.z = dronePose.pose.position.z;
+    odom_data.pose.pose.orientation.x = dronePose.pose.orientation.x;
+    odom_data.pose.pose.orientation.y = dronePose.pose.orientation.y;
+    odom_data.pose.pose.orientation.z = dronePose.pose.orientation.z;
+    odom_data.pose.pose.orientation.w = dronePose.pose.orientation.w;
+    lastBebopOdom = odom_data;
     return dronePose;
   }
 
   void orbSLAMCallback(const nav_msgs::Odometry::ConstPtr& odom) {
-    /*listener.waitForTransform("map", "base_link", 
-            ros::Time(0), ros::Duration(7.0));
-    try { 
-      listener.lookupTransform("map", "base_link", ros::Time(0), tfTransform);
-    } catch(tf::TransformException &exception) { 
-      ROS_ERROR("%s", exception.what());
-    }
-    turtlePose.header.stamp = ros::Time::now();*/
+    orbSLAMPose.header.stamp = ros::Time::now();
 
-    //==== Position ====//
-    orbSLAMPose.pose.position.x = odom->pose.pose.position.x;
-    orbSLAMPose.pose.position.y = odom->pose.pose.position.y;
-    orbSLAMPose.pose.position.z = odom->pose.pose.position.z;
-    orbSLAMPose.pose.orientation.w = odom->pose.pose.orientation.w;
+    if(!first && ros::Time::now().toSec()-lastScaled>2 && seen) {
+      nav_msgs::Odometry kbebop = lastBebopOdom;
+      double bebopX = /*sqrt(abs(lastBebopOdom.pose.pose.position.x**/kbebop.pose.pose.position.x-
+                      k1BebopOdom.pose.pose.position.x/**k1BebopOdom.pose.pose.position.x))*/;
+      if(bebopX > 0) { // if tag has moved/been seen since
+        double orbSLAMX = /*sqrt(abs(odom->pose.pose.position.x**/odom->pose.pose.position.x-
+                      k1ORBSLamOdom.pose.pose.position.x/**k1ORBSLamOdom.pose.pose.position.x))*/;
+        double bebopY = /*sqrt(abs(lastBebopOdom.pose.pose.position.y**/kbebop.pose.pose.position.y-
+                      k1BebopOdom.pose.pose.position.y/**k1BebopOdom.pose.pose.position.y))*/;
+        double orbSLAMY = /*sqrt(abs(odom->pose.pose.position.z**/odom->pose.pose.position.z-
+                      k1ORBSLamOdom.pose.pose.position.z/**k1ORBSLamOdom.pose.pose.position.z))*/;
+        scaleX = bebopX/orbSLAMX;
+        scaleY = bebopY/orbSLAMY;
+       // scaleY = (lastBebopOdom.pose.pose.position.y-k1BebopOdom.pose.pose.position.y)
+       //         /(odom->pose.pose.position.z-k1ORBSLamOdom.pose.pose.position.z);
+        scaleZ = (kbebop.pose.pose.position.z-k1BebopOdom.pose.pose.position.z)
+                /(odom->pose.pose.position.y-k1ORBSLamOdom.pose.pose.position.y);
+        
+        lastScaled = ros::Time::now().toSec();
+      }
+
+      if(test_flag) {
+      cout << "////////////////ORB-SLAM Scale Factors////////////////" << endl;
+      cout << "ScaleX = " << scaleX << endl; //left/right
+      cout << "ScaleY = " << scaleY << endl; //forward
+      cout << "ScaleZ = " << scaleZ << "\n" << endl; //height
+      cout << "DifforbSLAMY = " << odom->pose.pose.position.z-k1ORBSLamOdom.pose.pose.position.z << endl;
+      cout << "DiffBebopY = " <<lastBebopOdom.pose.pose.position.y-k1BebopOdom.pose.pose.position.y << "\n"<< endl;
+      cout << "orbSLAMPoseX = " << orbSLAMPose.pose.position.x << endl;
+      cout << "orbSLAMPoseY = " << orbSLAMPose.pose.position.y << endl;
+      cout << "orbSLAMPoseZ = " << orbSLAMPose.pose.position.z << endl;
+      cout << "//////////////////////////////////////////////////////\n" << endl;
+      }
+    }
+
+    if(first && seen) {
+      //cout << "original turtlebot pose = " << turtlePose;
+      origTurtlePose = turtlePose;
+      startHeight = lastBebopOdom.pose.pose.position.z;
+      k1ORBSLamOdom.pose = odom->pose;
+      k1ORBSLamOdom.twist = odom->twist;
+      k1ORBSLamOdom.header = odom->header;
+      k1BebopOdom = lastBebopOdom; // make sure they are from the same timestamp
+      first = false;
+      usleep(1000);
+    } 
+    if(seen){
+    double meterAheadTB =.4;
+    //double startHeight = .7+.45;
+
+    orbSLAMPose.pose.position.x = odom->pose.pose.position.x*abs(scaleX);
+    orbSLAMPose.pose.position.y = odom->pose.pose.position.z*abs(scaleY);
+    orbSLAMPose.pose.position.z = odom->pose.pose.position.y*abs(scaleZ);
+
+    orbSLAMPose.pose.position.x = origTurtlePose.pose.position.x+odom->pose.pose.position.x;
+    orbSLAMPose.pose.position.y = origTurtlePose.pose.position.y+orbSLAMPose.pose.position.y+meterAheadTB;
+    orbSLAMPose.pose.position.z = origTurtlePose.pose.position.z+orbSLAMPose.pose.position.z;
+    orbSLAMPose.pose.orientation.w = origTurtlePose.pose.orientation.w;
     orbSLAMPose.pose.orientation.x = odom->pose.pose.orientation.x;
     orbSLAMPose.pose.orientation.y = odom->pose.pose.orientation.y;
     orbSLAMPose.pose.orientation.z = odom->pose.pose.orientation.z;
-    //turtlePlan.push_back(turtlePose);
+
+    orbSLAMPose.pose.position.z += startHeight;
     orbSLAMPath.poses.push_back(orbSLAMPose);
 
     if(!orbSLAMPath.poses.empty()){
       orbSLAMPath.header.stamp = orbSLAMPath.poses[0].header.stamp;
     }
+
     orbSLAMPathPub.publish(orbSLAMPath);
+  }
+    
   }
   /*********************************************************************************
   * private cl variables
@@ -145,12 +220,14 @@ class cl {
   private:
     ros::Subscriber tagDataSub;
     ros::Subscriber orbSLAMSub;
+    ros::Subscriber bebopOdomSub;
 
     ros::Publisher turtlePathPub;
     ros::Publisher dronePathPub;
     ros::Publisher orbSLAMPathPub;
 
     geometry_msgs::PoseStamped turtlePose;
+    geometry_msgs::PoseStamped origTurtlePose;
     geometry_msgs::PoseStamped orbSLAMPose;
     geometry_msgs::PoseStamped dronePose;
     geometry_msgs::PoseStamped tagPose;
@@ -158,8 +235,21 @@ class cl {
     nav_msgs::Path turtlePath;
     nav_msgs::Path orbSLAMPath;
 
+    nav_msgs::Odometry lastBebopOdom;
+    nav_msgs::Odometry k1BebopOdom;
+    nav_msgs::Odometry k1ORBSLamOdom;
     tf::TransformListener listener;
     tf::StampedTransform tfTransform;
+
+    bool first;
+    bool test_flag;
+    bool seen;
+    double scaleX;
+    double scaleY;
+    double scaleZ;;
+    double lastScaled;  
+
+    double startHeight;
 };
 
 int main(int argc, char **argv) {
@@ -172,6 +262,7 @@ int main(int argc, char **argv) {
   int seq = 0;
 
   cl pilot(n);
+
   //while(ros::ok()) {
     //rate.sleep();
     ros::spin();
