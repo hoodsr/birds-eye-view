@@ -28,6 +28,8 @@
 #include <ctime>
 #include <sstream>
 #include <math.h>
+#include <iostream>
+#include <fstream>
 
 #include <tf/transform_listener.h>
 #include "tf/transform_broadcaster.h"
@@ -53,8 +55,12 @@ class cl {
     dronePath.header.frame_id = "map";
     turtlePath.header.frame_id = "map";
     orbSLAMPath.header.frame_id = "map";
+    output.open ("3poses.txt");
+    output << "Timestamp  TBx  TBy  TBz  CLx  CLy  CLz  ORBx  ORBy  ORBz" << endl;
   }
   ~cl(void) {
+      output.close();
+
    // if(tfServer)
      // delete tfServer; 
   }
@@ -78,7 +84,6 @@ class cl {
     } catch(tf::TransformException &exception) { 
       ROS_ERROR("%s", exception.what());
     }
-    turtlePose.header.stamp = ros::Time::now();
 
     //==== Position ====//
     turtlePose.pose.position.x = tfTransform.getOrigin().x();
@@ -101,6 +106,7 @@ class cl {
       tagPose = msg->markers[0].pose;
       dronePose = getDronePose(turtlePose);
       dronePath.poses.push_back(dronePose);
+    turtlePose.header.stamp = msg->markers[0].header.stamp;
 
       if(!dronePath.poses.empty()){
         dronePath.header.stamp = dronePath.poses[0].header.stamp;
@@ -139,9 +145,9 @@ class cl {
   }
 
   void orbSLAMCallback(const nav_msgs::Odometry::ConstPtr& odom) {
-    orbSLAMPose.header.stamp = ros::Time::now();
+    orbSLAMPose.header.stamp = odom->header.stamp;
 
-    if(!first && ros::Time::now().toSec()-lastScaled>2 && seen) {
+    if(!first && ros::Time::now().toSec()-lastScaled>2 ) {
       nav_msgs::Odometry kbebop = lastBebopOdom;
       double bebopX = /*sqrt(abs(lastBebopOdom.pose.pose.position.x**/kbebop.pose.pose.position.x-
                       k1BebopOdom.pose.pose.position.x/**k1BebopOdom.pose.pose.position.x))*/;
@@ -188,12 +194,12 @@ class cl {
       usleep(1000);
     } 
     if(seen){
-    double meterAheadTB =.4;
+    double meterAheadTB =0;
     //double startHeight = .7+.45;
 
     orbSLAMPose.pose.position.x = odom->pose.pose.position.x*abs(scaleX);
     orbSLAMPose.pose.position.y = odom->pose.pose.position.z*abs(scaleY);
-    orbSLAMPose.pose.position.z = odom->pose.pose.position.y*abs(scaleZ);
+    orbSLAMPose.pose.position.z = odom->pose.pose.position.y*abs(-scaleZ);
 
     orbSLAMPose.pose.position.x = origTurtlePose.pose.position.x+odom->pose.pose.position.x;
     orbSLAMPose.pose.position.y = origTurtlePose.pose.position.y+orbSLAMPose.pose.position.y+meterAheadTB;
@@ -207,10 +213,15 @@ class cl {
     orbSLAMPath.poses.push_back(orbSLAMPose);
 
     if(!orbSLAMPath.poses.empty()){
-      orbSLAMPath.header.stamp = orbSLAMPath.poses[0].header.stamp;
+      orbSLAMPath.header.stamp = orbSLAMPath.poses[orbSLAMPath.poses.size()-1].header.stamp;
     }
 
     orbSLAMPathPub.publish(orbSLAMPath);
+    output << turtlePose.header.stamp << "  "
+           << turtlePose.pose.position.x << "  " << turtlePose.pose.position.y << "  " << turtlePose.pose.position.z << "  "
+           << dronePose.pose.position.x << "  " << dronePose.pose.position.y << "  " << dronePose.pose.position.z << "  "
+           << orbSLAMPose.pose.position.x << "  " << orbSLAMPose.pose.position.y << "  " << orbSLAMPose.pose.position.z << endl;
+    output.flush();
   }
     
   }
@@ -240,6 +251,8 @@ class cl {
     nav_msgs::Odometry k1ORBSLamOdom;
     tf::TransformListener listener;
     tf::StampedTransform tfTransform;
+
+    ofstream output;
 
     bool first;
     bool test_flag;
