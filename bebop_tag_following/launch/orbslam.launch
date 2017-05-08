@@ -1,0 +1,3 @@
+<launch>
+  <node pkg="ORB_SLAM2" type="Mono" name="Mono" output="screen" args="/home/kusanagi/ORB_SLAM2/Vocabulary/ORBvoc.txt /home/kusanagi/ORB_SLAM2/Examples/Monocular/bebop1.yaml" />
+</launch>

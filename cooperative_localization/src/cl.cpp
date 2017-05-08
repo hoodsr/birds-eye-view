@@ -39,10 +39,10 @@ class cl {
   public:
   cl(ros::NodeHandle& nh) { 
     scaleX = 1;
-    seen = false;
     scaleY = 7.632;
     scaleZ = 2.8;
     first = true;
+    seen = false;
     test_flag = true;
     orbSLAMSub = nh.subscribe("/ORB_SLAM/odom", 10000, &cl::orbSLAMCallback, this);
     tagDataSub = nh.subscribe("/ar_pose_marker", 100000, &cl::tagCallback, this);
@@ -113,9 +113,9 @@ class cl {
       }
       dronePathPub.publish(dronePath);
       seen = true; 
-
+      lastSeen = ros::Time::now().toSec();
     } else {
-      seen = false;
+          if(ros::Time::now().toSec()-lastSeen>2) seen = false;
     }
   }
 
@@ -159,7 +159,7 @@ class cl {
       first = false;
       usleep(1000);
     } 
-    if(!first && ros::Time::now().toSec()-lastScaled>1 && seen) {
+    else if(!first && ros::Time::now().toSec()-lastScaled>1 && seen) {
       nav_msgs::Odometry kbebop = lastBebopOdom;
       double bebopX = /*sqrt(abs(lastBebopOdom.pose.pose.position.x**/kbebop.pose.pose.position.x-
                       k1BebopOdom.pose.pose.position.x/**k1BebopOdom.pose.pose.position.x))*/;
@@ -169,11 +169,13 @@ class cl {
                     k1BebopOdom.pose.pose.position.y/**k1BebopOdom.pose.pose.position.y))*/;
       double orbSLAMY = /*sqrt(abs(odom->pose.pose.position.z**/odom->pose.pose.position.z-
                     k1ORBSLamOdom.pose.pose.position.z/**k1ORBSLamOdom.pose.pose.position.z))*/;
-      scaleX = bebopX/orbSLAMX;
-      scaleY = bebopY/orbSLAMY;
-      scaleZ = (kbebop.pose.pose.position.z-k1BebopOdom.pose.pose.position.z)
-              /(odom->pose.pose.position.y-k1ORBSLamOdom.pose.pose.position.y);
-      
+      double bebopZ = /*sqrt(abs(lastBebopOdom.pose.pose.position.z**/kbebop.pose.pose.position.z-
+                    k1BebopOdom.pose.pose.position.z/**k1BebopOdom.pose.pose.position.z))*/;
+      double orbSLAMZ = /*sqrt(abs(odom->pose.pose.position.y**/odom->pose.pose.position.y-
+                    k1ORBSLamOdom.pose.pose.position.y/**k1ORBSLamOdom.pose.pose.position.y))*/;
+      if(orbSLAMX && bebopX != 0) scaleX = bebopX/orbSLAMX;
+      if(orbSLAMY && bebopY != 0) scaleY = bebopY/orbSLAMY;
+      if(orbSLAMZ && bebopZ != 0) scaleZ = bebopZ/orbSLAMZ;
       lastScaled = ros::Time::now().toSec();
       
       if(test_flag) {
@@ -190,7 +192,7 @@ class cl {
       }
     }
 
-    if(seen){
+    if(!first){
       orbSLAMPose.pose.position.x = odom->pose.pose.position.x*abs(scaleX);
       orbSLAMPose.pose.position.y = odom->pose.pose.position.z*abs(scaleY); //orbslam y and z axis swapped
       orbSLAMPose.pose.position.z = odom->pose.pose.position.y*abs(-scaleZ);
@@ -218,7 +220,6 @@ class cl {
              << orbSLAMPose.pose.position.x << "  " << orbSLAMPose.pose.position.y << "  " << orbSLAMPose.pose.position.z << endl;
       output.flush();
     }
-    
   }
   /*********************************************************************************
   * private cl variables
@@ -256,6 +257,7 @@ class cl {
     double scaleY;
     double scaleZ;;
     double lastScaled;  
+    double lastSeen;  
     double meterAheadTB;
     double startHeight;
 };
