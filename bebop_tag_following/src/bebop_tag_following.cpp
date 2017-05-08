@@ -12,6 +12,7 @@ using namespace std;
 
 bebopTagFollowing::bebopTagFollowing(ros::NodeHandle& nh) {
   tagDetected = false;
+  seenOnce = false;
   //publishers & services
   drone_comms = nh.advertise<std_msgs::UInt8>("/drone_comms", 1);
   cmdVel = nh.advertise<geometry_msgs::Twist>("/bebop/cmd_vel", 1);
@@ -42,7 +43,7 @@ void bebopTagFollowing::initialize() {
   state.x = state.y = state.z = 0;
   
    std_msgs::Empty blank;
-   takeOff.publish(blank);
+   //takeOff.publish(blank);
    usleep(100);
 
   // Let Turtlebot know to start
@@ -115,6 +116,7 @@ void bebopTagFollowing::positionCallback(const ar_track_alvar_msgs::AlvarMarkers
   ostringstream s;
   std_msgs::String command;
   if(!msg->markers.empty()) { 
+    seenOnce = true;
     timeDelta = currentTime-lastSeen;
     lastSeen = currentTime;
 
@@ -180,20 +182,22 @@ void bebopTagFollowing::positionCallback(const ar_track_alvar_msgs::AlvarMarkers
 
         hover();
       }
-      if(!tagDetected) {
+      if(seenOnce) {
         std::cout << "{WARN}: Tag lost by ar_track_alvar" << std::endl;
         uavOffset.x = lastUGVPose.position.x - lastOrbPose.position.x;
         uavOffset.y = lastUGVPose.position.y - lastOrbPose.position.y;
-        uavOffset.z = lastUGVPose.position.z - lastOrbPose.position.z + HEIGHT_OVER_TAG;
+        uavOffset.z = -1*(lastOrbPose.position.z - HEIGHT_OVER_TAG);
          ROS_INFO("UAV Offset: x=%1.2f  y=%1.2f  z=%1.2f", 
               uavOffset.x, uavOffset.y, uavOffset.z);
         geometry_msgs::Twist cmdOrb;
         // cmdOrb.angular.z = -state.yaw*0.4*M_PI/180;
         cmdOrb.linear.z = uavOffset.z*0.4;
-        cmdOrb.linear.x = uavOffset.x*0.07;
+        cmdOrb.linear.x = uavOffset.x*0.5;
         cmdOrb.linear.y = uavOffset.y*0.07;
         cmdOrb.angular.x = cmdOrb.angular.y  = cmdOrb.angular.z = 0;
-        cmdVel.publish(cmdOrb);
+        ROS_INFO("velocity published: x=%1.2f  y=%1.2f  z=%1.2f", 
+              cmdOrb.linear.x, cmdOrb.linear.y, cmdOrb.linear.z);
+        //cmdVel.publish(cmdOrb);
       }
     }
   }

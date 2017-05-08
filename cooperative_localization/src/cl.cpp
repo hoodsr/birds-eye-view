@@ -78,7 +78,7 @@ class cl {
   */
   void tagCallback(const ar_track_alvar_msgs::AlvarMarkers::ConstPtr& msg) { 
     listener.waitForTransform("map", "base_link", 
-            ros::Time(0), ros::Duration(7.0));
+            ros::Time(0), ros::Duration(5.0));
     try { 
       listener.lookupTransform("map", "base_link", ros::Time(0), tfTransform);
     } catch(tf::TransformException &exception) { 
@@ -106,7 +106,7 @@ class cl {
       tagPose = msg->markers[0].pose;
       dronePose = getDronePose(turtlePose);
       dronePath.poses.push_back(dronePose);
-    turtlePose.header.stamp = msg->markers[0].header.stamp;
+      turtlePose.header.stamp = msg->markers[0].header.stamp;
 
       if(!dronePath.poses.empty()){
         dronePath.header.stamp = dronePath.poses[0].header.stamp;
@@ -114,6 +114,8 @@ class cl {
       dronePathPub.publish(dronePath);
       seen = true; 
 
+    } else {
+      seen = false;
     }
   }
 
@@ -123,7 +125,7 @@ class cl {
 
     dronePose.pose.position.x += tagPose.pose.position.x;
     dronePose.pose.position.y += tagPose.pose.position.y;
-    dronePose.pose.position.z += tagPose.pose.position.z+.45;
+    dronePose.pose.position.z += tagPose.pose.position.z+.45; //.45 height of tb
 
     //might need -90*M_PI/180
     dronePose.pose.orientation.w += tagPose.pose.orientation.w;
@@ -146,28 +148,34 @@ class cl {
 
   void orbSLAMCallback(const nav_msgs::Odometry::ConstPtr& odom) {
     orbSLAMPose.header.stamp = odom->header.stamp;
-
-    if(!first && ros::Time::now().toSec()-lastScaled>2 ) {
+    if(first && seen) {
+      origTurtlePose = turtlePose;
+      startHeight = lastBebopOdom.pose.pose.position.z;
+      meterAheadTB = odom->pose.pose.position.z-lastBebopOdom.pose.pose.position.y;
+      k1ORBSLamOdom.pose = odom->pose;
+      k1ORBSLamOdom.twist = odom->twist;
+      k1ORBSLamOdom.header = odom->header;
+      k1BebopOdom = lastBebopOdom; // make sure they are from the same timestamp
+      first = false;
+      usleep(1000);
+    } 
+    if(!first && ros::Time::now().toSec()-lastScaled>1 && seen) {
       nav_msgs::Odometry kbebop = lastBebopOdom;
       double bebopX = /*sqrt(abs(lastBebopOdom.pose.pose.position.x**/kbebop.pose.pose.position.x-
                       k1BebopOdom.pose.pose.position.x/**k1BebopOdom.pose.pose.position.x))*/;
-      if(bebopX > 0) { // if tag has moved/been seen since
-        double orbSLAMX = /*sqrt(abs(odom->pose.pose.position.x**/odom->pose.pose.position.x-
-                      k1ORBSLamOdom.pose.pose.position.x/**k1ORBSLamOdom.pose.pose.position.x))*/;
-        double bebopY = /*sqrt(abs(lastBebopOdom.pose.pose.position.y**/kbebop.pose.pose.position.y-
-                      k1BebopOdom.pose.pose.position.y/**k1BebopOdom.pose.pose.position.y))*/;
-        double orbSLAMY = /*sqrt(abs(odom->pose.pose.position.z**/odom->pose.pose.position.z-
-                      k1ORBSLamOdom.pose.pose.position.z/**k1ORBSLamOdom.pose.pose.position.z))*/;
-        scaleX = bebopX/orbSLAMX;
-        scaleY = bebopY/orbSLAMY;
-       // scaleY = (lastBebopOdom.pose.pose.position.y-k1BebopOdom.pose.pose.position.y)
-       //         /(odom->pose.pose.position.z-k1ORBSLamOdom.pose.pose.position.z);
-        scaleZ = (kbebop.pose.pose.position.z-k1BebopOdom.pose.pose.position.z)
-                /(odom->pose.pose.position.y-k1ORBSLamOdom.pose.pose.position.y);
-        
-        lastScaled = ros::Time::now().toSec();
-      }
-
+      double orbSLAMX = /*sqrt(abs(odom->pose.pose.position.x**/odom->pose.pose.position.x-
+                    k1ORBSLamOdom.pose.pose.position.x/**k1ORBSLamOdom.pose.pose.position.x))*/;
+      double bebopY = /*sqrt(abs(lastBebopOdom.pose.pose.position.y**/kbebop.pose.pose.position.y-
+                    k1BebopOdom.pose.pose.position.y/**k1BebopOdom.pose.pose.position.y))*/;
+      double orbSLAMY = /*sqrt(abs(odom->pose.pose.position.z**/odom->pose.pose.position.z-
+                    k1ORBSLamOdom.pose.pose.position.z/**k1ORBSLamOdom.pose.pose.position.z))*/;
+      scaleX = bebopX/orbSLAMX;
+      scaleY = bebopY/orbSLAMY;
+      scaleZ = (kbebop.pose.pose.position.z-k1BebopOdom.pose.pose.position.z)
+              /(odom->pose.pose.position.y-k1ORBSLamOdom.pose.pose.position.y);
+      
+      lastScaled = ros::Time::now().toSec();
+      
       if(test_flag) {
       cout << "////////////////ORB-SLAM Scale Factors////////////////" << endl;
       cout << "ScaleX = " << scaleX << endl; //left/right
@@ -182,47 +190,34 @@ class cl {
       }
     }
 
-    if(first && seen) {
-      //cout << "original turtlebot pose = " << turtlePose;
-      origTurtlePose = turtlePose;
-      startHeight = lastBebopOdom.pose.pose.position.z;
-      k1ORBSLamOdom.pose = odom->pose;
-      k1ORBSLamOdom.twist = odom->twist;
-      k1ORBSLamOdom.header = odom->header;
-      k1BebopOdom = lastBebopOdom; // make sure they are from the same timestamp
-      first = false;
-      usleep(1000);
-    } 
     if(seen){
-    double meterAheadTB =0;
-    //double startHeight = .7+.45;
+      orbSLAMPose.pose.position.x = odom->pose.pose.position.x*abs(scaleX);
+      orbSLAMPose.pose.position.y = odom->pose.pose.position.z*abs(scaleY); //orbslam y and z axis swapped
+      orbSLAMPose.pose.position.z = odom->pose.pose.position.y*abs(-scaleZ);
 
-    orbSLAMPose.pose.position.x = odom->pose.pose.position.x*abs(scaleX);
-    orbSLAMPose.pose.position.y = odom->pose.pose.position.z*abs(scaleY);
-    orbSLAMPose.pose.position.z = odom->pose.pose.position.y*abs(-scaleZ);
+      orbSLAMPose.pose.position.x = origTurtlePose.pose.position.x+orbSLAMPose.pose.position.x;
+      orbSLAMPose.pose.position.y = origTurtlePose.pose.position.y+orbSLAMPose.pose.position.y;
+      orbSLAMPose.pose.position.z = origTurtlePose.pose.position.z+orbSLAMPose.pose.position.z;
+      orbSLAMPose.pose.orientation.w = origTurtlePose.pose.orientation.w;
+      orbSLAMPose.pose.orientation.x = odom->pose.pose.orientation.x;
+      orbSLAMPose.pose.orientation.y = odom->pose.pose.orientation.y;
+      orbSLAMPose.pose.orientation.z = odom->pose.pose.orientation.z;
 
-    orbSLAMPose.pose.position.x = origTurtlePose.pose.position.x+odom->pose.pose.position.x;
-    orbSLAMPose.pose.position.y = origTurtlePose.pose.position.y+orbSLAMPose.pose.position.y+meterAheadTB;
-    orbSLAMPose.pose.position.z = origTurtlePose.pose.position.z+orbSLAMPose.pose.position.z;
-    orbSLAMPose.pose.orientation.w = origTurtlePose.pose.orientation.w;
-    orbSLAMPose.pose.orientation.x = odom->pose.pose.orientation.x;
-    orbSLAMPose.pose.orientation.y = odom->pose.pose.orientation.y;
-    orbSLAMPose.pose.orientation.z = odom->pose.pose.orientation.z;
+      orbSLAMPose.pose.position.y += meterAheadTB;
+      orbSLAMPose.pose.position.z += startHeight;
+      orbSLAMPath.poses.push_back(orbSLAMPose);
 
-    orbSLAMPose.pose.position.z += startHeight;
-    orbSLAMPath.poses.push_back(orbSLAMPose);
+      if(!orbSLAMPath.poses.empty()){
+        orbSLAMPath.header.stamp = orbSLAMPath.poses[orbSLAMPath.poses.size()-1].header.stamp;
+      }
 
-    if(!orbSLAMPath.poses.empty()){
-      orbSLAMPath.header.stamp = orbSLAMPath.poses[orbSLAMPath.poses.size()-1].header.stamp;
+      orbSLAMPathPub.publish(orbSLAMPath);
+      output << turtlePose.header.stamp << "  "
+             << turtlePose.pose.position.x << "  " << turtlePose.pose.position.y << "  " << turtlePose.pose.position.z << "  "
+             << dronePose.pose.position.x << "  " << dronePose.pose.position.y << "  " << dronePose.pose.position.z << "  "
+             << orbSLAMPose.pose.position.x << "  " << orbSLAMPose.pose.position.y << "  " << orbSLAMPose.pose.position.z << endl;
+      output.flush();
     }
-
-    orbSLAMPathPub.publish(orbSLAMPath);
-    output << turtlePose.header.stamp << "  "
-           << turtlePose.pose.position.x << "  " << turtlePose.pose.position.y << "  " << turtlePose.pose.position.z << "  "
-           << dronePose.pose.position.x << "  " << dronePose.pose.position.y << "  " << dronePose.pose.position.z << "  "
-           << orbSLAMPose.pose.position.x << "  " << orbSLAMPose.pose.position.y << "  " << orbSLAMPose.pose.position.z << endl;
-    output.flush();
-  }
     
   }
   /*********************************************************************************
@@ -261,7 +256,7 @@ class cl {
     double scaleY;
     double scaleZ;;
     double lastScaled;  
-
+    double meterAheadTB;
     double startHeight;
 };
 

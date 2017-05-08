@@ -67,7 +67,7 @@ class bebopTagFollowing {
    
     bool printedWarn;
     bool tagDetected;
-
+    bool seenOnce;
     double lastSeen;
     double startTime;
     double currentTime;
