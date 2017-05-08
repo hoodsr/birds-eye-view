@@ -1,15 +1,15 @@
 # Vision Tracking
 v. 1.0.1
 
-[Vision Tracking ][git-repo-url] is a package for [ros][ROS] that allows an autonomous arial vehicle to track and maintain a relative position to a moving ground target using little to no forms of communication between the two vehicles. 
+[Vision Tracking ][git-repo-url] is a package for [ros][ROS] that allows an autonomous aerial vehicle to track and maintain a relative position to an autonomous ground robot. 
 
 ## Authors
 ---
+Shannon Hood
+
 Kelly Benson
 
 Patrick Hamod
-
-Shannon Hood
 
 Daniel Madison
 
@@ -21,8 +21,9 @@ For help installing ros indigo, go [here][ROS-INSTALL]
 ---
 * ros-indigo-desktop-full
 * ros-indigo-turtlebot
-* ros-indigo-hokuyo-node  (or equivalent laser range finder package)
- 
+* urg-node  (or equivalent laser range finder package)
+* usb_cam
+* bebop_autonomy
 
 ##### Downloading and setting up the build enviroment
 ---
