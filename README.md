@@ -1,7 +1,7 @@
-# Vision Tracking
-v. 1.0.1
+# Bird's Eye View
+v. 2.2
 
-[Vision Tracking ][git-repo-url] is a package for [ros][ROS] that allows an autonomous aerial vehicle to track and maintain a relative position to an autonomous ground robot. 
+[Bird's Eye View][git-repo-url] is a package for [ros][ROS] that allows an autonomous aerial vehicle to track and maintain a relative position to an autonomous ground robot. 
 
 ## Authors
 ---
@@ -24,6 +24,7 @@ For help installing ros indigo, go [here][ROS-INSTALL]
 * urg-node  (or equivalent laser range finder package)
 * usb_cam
 * bebop_autonomy
+* ORB-SLAM 2
 
 ##### Downloading and setting up the build enviroment
 ---
