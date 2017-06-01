@@ -1,7 +1,7 @@
 # Bird's Eye View
 v. 2.2
 
-[Bird's Eye View][git-repo-url] is a package for [ros][ROS] that allows an autonomous aerial vehicle to track and maintain a relative position to an autonomous ground robot. 
+[Bird's Eye View][git-repo-url] is a package for [ros][ROS] that allows an autonomous aerial vehicle to track and maintain a relative position to an autonomous ground robot. This paper was presented at ICUAS 2017.
 
 ## Authors
 ---
@@ -9,9 +9,13 @@ Shannon Hood
 
 Kelly Benson
 
+Daniel Madison
+
 Patrick Hamod
 
-Daniel Madison
+Jason M. O'Kane
+
+Ioannis Rekleitis
 
 ## Installation
 ---
@@ -43,4 +47,3 @@ Released under the MIT Liscense
 [git-repo-url]: <https://github.com/madisodr/visiontrackingr>
 [ROS]: <http://www.ros.org/>
 [ROS-INSTALL]: <http://wiki.ros.org/indigo/Installation/Ubuntu>
-# birds-eye-view
