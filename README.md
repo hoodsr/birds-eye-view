@@ -20,7 +20,7 @@ Ioannis Rekleitis
 ## Installation
 ---
 As of now, this has only been built on ROS Indigo using Ubuntu 14.04
-For help installing ros indigo, go [here][ROS-INSTALL]
+For help installing ros indigo, go [here][ROS-INSTALL]. See wiki for detailed installation instructions.
 ##### Required Packages
 ---
 * ros-indigo-desktop-full
