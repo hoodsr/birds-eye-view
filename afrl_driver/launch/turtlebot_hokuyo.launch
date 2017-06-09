@@ -1,0 +1,12 @@
+<launch>
+    <include file="$(find turtlebot_bringup)/launch/minimal.launch" />
+
+    <node name="gmapping" pkg="gmapping" type="slam_gmapping" args="scan:=base_scan" >
+        <param name="linearUpdate" value="0.1" />
+        <param name="angularUpdate" value="0.1" />
+    </node>
+    <node name="hokuyo" pkg="hokuyo_node" type="hokuyo_node" >
+        <param name="frame_id" value="base_link" />
+        <remap from="scan" to="base_scan" />
+    </node>
+</launch>

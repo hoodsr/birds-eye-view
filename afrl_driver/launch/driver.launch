@@ -1,0 +1,3 @@
+<launch>
+    <node name="Driver" pkg="afrl_driver" type="Driver" output="screen"/>
+</launch>
