@@ -1,9 +1,10 @@
 /********************************************************************************************
 * cl class
 * 
-* This class is designed to work with the ar drone parrot 2.0 and turtlebot 2
-* to provide cooperitive localization of the drone from the turtlebots frame
-* of reference using the turtlebots pose and ar_track_alvar tag info
+* This class is designed to work with the Parrot Bebop and TurtleBot
+* to provide cooperative localization of the drone from the TurtleBot's frame
+* of reference using the TurtleBot's pose and ar_track_alvar tag info. Also 
+* is responsible for scaling ORB-SLAM.
 *
 * Authors: Shannon Hood
 * Last Edited: 23 January 2017
@@ -35,12 +36,13 @@
 #include "tf/transform_broadcaster.h"
 #include "tf/message_filter.h"
 using namespace std;
+
 class cl {
   public:
   cl(ros::NodeHandle& nh) { 
     scaleX = 1;
-    scaleY = 7.632;
-    scaleZ = 2.8;
+    scaleY = 7.632; // default scale values calculated from a bag file
+    scaleZ = 2.8;   // these are overwritten when the true scale factor is calculated
     first = true;
     seen = false;
     test_flag = true;
@@ -55,6 +57,7 @@ class cl {
     dronePath.header.frame_id = "map";
     turtlePath.header.frame_id = "map";
     orbSLAMPath.header.frame_id = "map";
+
     output.open ("3poses.txt");
     output << "Timestamp  TBx  TBy  TBz  CLx  CLy  CLz  ORBx  ORBy  ORBz" << endl;
   }
@@ -72,9 +75,13 @@ class cl {
   }
 
 
-  /********************************************************************************
-  * function should transfrom data to turtlebots frame of reference
-  * then using the odom data from the turtlebot, calculate the pose of the drone
+  /********************************************************************************:
+  * Function: tagCallback
+  * Input: Tag pose from ar_track_alvar
+  *
+  * Transfrom tag data to the TurtleBot's frame of reference.
+  * Then using the odom data from the TurtleBot, calculate the pose of the drone
+  * using cooperative localization.
   */
   void tagCallback(const ar_track_alvar_msgs::AlvarMarkers::ConstPtr& msg) { 
     listener.waitForTransform("map", "base_link", 
@@ -118,6 +125,7 @@ class cl {
           if(ros::Time::now().toSec()-lastSeen>2) seen = false;
     }
   }
+
 
   geometry_msgs::PoseStamped getDronePose(geometry_msgs::PoseStamped turtlePose) {
     geometry_msgs::PoseStamped dronePose;
@@ -221,6 +229,8 @@ class cl {
       output.flush();
     }
   }
+
+  
   /*********************************************************************************
   * private cl variables
   */
