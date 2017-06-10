@@ -43,8 +43,9 @@ include_directories(${catkin_INCLUDE_DIRS})
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
-find_package(ardrone_autonomy REQUIRED)
-include_directories(${ardrone_autonomy_INCLUDE_DIRS})
+#The following lines are from a deprecated version which used the ardrone
+#find_package(ardrone_autonomy REQUIRED)
+#include_directories(${ardrone_autonomy_INCLUDE_DIRS})
 #uncomment if you have defined messages
 #rosbuild_genmsg()
 #uncomment if you have defined services
