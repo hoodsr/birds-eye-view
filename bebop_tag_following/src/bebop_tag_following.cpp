@@ -165,8 +165,8 @@ void bebopTagFollowing::positionCallback(const ar_track_alvar_msgs::AlvarMarkers
     geometry_msgs::Twist cmdT;
     cmdT.angular.z = -state.yaw*0.4*M_PI/180;
     cmdT.linear.z = state.z*0.4;
-    cmdT.linear.x = state.x*0.07+state.vx;
-    cmdT.linear.y = state.y*0.07+state.vy;
+    cmdT.linear.x = 0.25*state.x+0.8*state.vx;
+    cmdT.linear.y = 0.25*state.y+0.8*state.vy;
     cmdT.angular.x = cmdT.angular.y = 0;
     cmdVel.publish(cmdT);
   }
