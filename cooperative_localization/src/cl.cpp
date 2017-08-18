@@ -96,7 +96,6 @@ class cl {
     turtlePose.pose.position.x = tfTransform.getOrigin().x();
     turtlePose.pose.position.y = tfTransform.getOrigin().y();
     turtlePose.pose.position.z = tfTransform.getOrigin().z();
-    if(turtlePose.pose.position.z > .5) return;
     turtlePose.pose.orientation.w = tfTransform.getRotation().w();
     turtlePose.pose.orientation.x = tfTransform.getRotation().x();
     turtlePose.pose.orientation.y = tfTransform.getRotation().y();
@@ -169,21 +168,15 @@ class cl {
     } 
     else if(!first && ros::Time::now().toSec()-lastScaled>1 && seen) {
       nav_msgs::Odometry kbebop = lastBebopOdom;
-      double bebopX = /*sqrt(abs(lastBebopOdom.pose.pose.position.x**/kbebop.pose.pose.position.x-
-                      k1BebopOdom.pose.pose.position.x/**k1BebopOdom.pose.pose.position.x))*/;
-      double orbSLAMX = /*sqrt(abs(odom->pose.pose.position.x**/odom->pose.pose.position.x-
-                    k1ORBSLamOdom.pose.pose.position.x/**k1ORBSLamOdom.pose.pose.position.x))*/;
-      double bebopY = /*sqrt(abs(lastBebopOdom.pose.pose.position.y**/kbebop.pose.pose.position.y-
-                    k1BebopOdom.pose.pose.position.y/**k1BebopOdom.pose.pose.position.y))*/;
-      double orbSLAMY = /*sqrt(abs(odom->pose.pose.position.z**/odom->pose.pose.position.z-
-                    k1ORBSLamOdom.pose.pose.position.z/**k1ORBSLamOdom.pose.pose.position.z))*/;
-      double bebopZ = /*sqrt(abs(lastBebopOdom.pose.pose.position.z**/kbebop.pose.pose.position.z-
-                    k1BebopOdom.pose.pose.position.z/**k1BebopOdom.pose.pose.position.z))*/;
-      double orbSLAMZ = /*sqrt(abs(odom->pose.pose.position.y**/odom->pose.pose.position.y-
-                    k1ORBSLamOdom.pose.pose.position.y/**k1ORBSLamOdom.pose.pose.position.y))*/;
-      if(orbSLAMX && bebopX != 0) scaleX = bebopX/orbSLAMX;
-      if(orbSLAMY && bebopY != 0) scaleY = bebopY/orbSLAMY;
-      if(orbSLAMZ && bebopZ != 0) scaleZ = bebopZ/orbSLAMZ;
+      double bebopX = kbebop.pose.pose.position.x-k1BebopOdom.pose.pose.position.x;
+      double orbSLAMX = odom->pose.pose.position.x-k1ORBSLamOdom.pose.pose.position.x;
+      double bebopY = kbebop.pose.pose.position.y-k1BebopOdom.pose.pose.position.y;
+      double orbSLAMY = odom->pose.pose.position.z-k1ORBSLamOdom.pose.pose.position.z;
+      double bebopZ = /bebop.pose.pose.position.z-k1BebopOdom.pose.pose.position.z;
+      double orbSLAMZ = odom->pose.pose.position.y-k1ORBSLamOdom.pose.pose.position.y;
+      if(orbSLAMX != 0 && bebopX != 0) scaleX = bebopX/orbSLAMX;
+      if(orbSLAMY != 0 && bebopY != 0) scaleY = bebopY/orbSLAMY;
+      if(orbSLAMZ != 0 && bebopZ != 0) scaleZ = bebopZ/orbSLAMZ;
       lastScaled = ros::Time::now().toSec();
       
       if(test_flag) {
@@ -203,7 +196,7 @@ class cl {
     if(!first){
       orbSLAMPose.pose.position.x = odom->pose.pose.position.x*abs(scaleX);
       orbSLAMPose.pose.position.y = odom->pose.pose.position.z*abs(scaleY); //orbslam y and z axis swapped
-      orbSLAMPose.pose.position.z = odom->pose.pose.position.y*abs(-scaleZ);
+      orbSLAMPose.pose.position.z = odom->pose.pose.position.y*abs(scaleZ);
 
       orbSLAMPose.pose.position.x = origTurtlePose.pose.position.x+orbSLAMPose.pose.position.x;
       orbSLAMPose.pose.position.y = origTurtlePose.pose.position.y+orbSLAMPose.pose.position.y;
