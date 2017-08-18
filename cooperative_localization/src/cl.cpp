@@ -166,13 +166,14 @@ class cl {
       first = false;
       usleep(1000);
     } 
+    //calculate scale factor
     else if(!first && ros::Time::now().toSec()-lastScaled>1 && seen) {
       nav_msgs::Odometry kbebop = lastBebopOdom;
       double bebopX = kbebop.pose.pose.position.x-k1BebopOdom.pose.pose.position.x;
       double orbSLAMX = odom->pose.pose.position.x-k1ORBSLamOdom.pose.pose.position.x;
       double bebopY = kbebop.pose.pose.position.y-k1BebopOdom.pose.pose.position.y;
       double orbSLAMY = odom->pose.pose.position.z-k1ORBSLamOdom.pose.pose.position.z;
-      double bebopZ = /bebop.pose.pose.position.z-k1BebopOdom.pose.pose.position.z;
+      double bebopZ = bebop.pose.pose.position.z-k1BebopOdom.pose.pose.position.z;
       double orbSLAMZ = odom->pose.pose.position.y-k1ORBSLamOdom.pose.pose.position.y;
       if(orbSLAMX != 0 && bebopX != 0) scaleX = bebopX/orbSLAMX;
       if(orbSLAMY != 0 && bebopY != 0) scaleY = bebopY/orbSLAMY;
